@@ -1,6 +1,7 @@
 use crate::{
     auth::{AuthSession, Credentials},
     gameplay::models::Server,
+    routes::{json_error, json_success},
 };
 use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
 use axum::{
@@ -12,6 +13,7 @@ use axum::{
 };
 use rand_08::rngs::OsRng;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::sync::{Arc, Mutex};
 
 // =========================
@@ -45,17 +47,17 @@ async fn sign_up(
     } = form;
 
     if server.email_exists(&email) {
-        return (StatusCode::BAD_REQUEST, "Email already registered").into_response();
+        return (StatusCode::BAD_REQUEST, json_error("Email already exists")).into_response();
     }
 
     if !email.contains('@') || !email.contains('.') {
-        return (StatusCode::BAD_REQUEST, "Invalid email format").into_response();
+        return (StatusCode::BAD_REQUEST, json_error("Invalid email format")).into_response();
     }
 
     if password.len() < 8 {
         return (
             StatusCode::BAD_REQUEST,
-            "Password must be at least 8 characters long",
+            json_error("Password must be at least 8 characters long"),
         )
             .into_response();
     }
@@ -63,7 +65,7 @@ async fn sign_up(
     if name.len() < 3 {
         return (
             StatusCode::BAD_REQUEST,
-            "Player name must be at least 3 characters long",
+            json_error("Player name must be at least 3 characters long"),
         )
             .into_response();
     }
@@ -76,7 +78,7 @@ async fn sign_up(
 
     server.create_player(email, pw_hash, name);
 
-    (StatusCode::OK, "Account created").into_response()
+    (StatusCode::OK, json_success("Account created")).into_response()
 }
 
 // --- Sign In ---

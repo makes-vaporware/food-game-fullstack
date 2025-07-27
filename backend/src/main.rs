@@ -1,6 +1,7 @@
 mod app;
 mod auth;
 mod gameplay;
+mod models;
 mod routes;
 mod tests;
 
