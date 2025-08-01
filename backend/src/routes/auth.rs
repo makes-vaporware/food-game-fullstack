@@ -1,7 +1,7 @@
 use crate::{
     auth::{AuthSession, Credentials},
     gameplay::models::Server,
-    routes::{json_error, json_success},
+    routes::{json_message, json_redirect},
 };
 use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
 use axum::{
@@ -13,7 +13,6 @@ use axum::{
 };
 use rand_08::rngs::OsRng;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::sync::{Arc, Mutex};
 
 // =========================
@@ -23,7 +22,7 @@ use std::sync::{Arc, Mutex};
 // --- Root ---
 
 async fn root() -> impl IntoResponse {
-    (StatusCode::OK, "Hello World!").into_response()
+    (StatusCode::OK, json_message("Hello World!")).into_response()
 }
 
 // --- Sign Up ---
@@ -47,17 +46,25 @@ async fn sign_up(
     } = form;
 
     if server.email_exists(&email) {
-        return (StatusCode::BAD_REQUEST, json_error("Email already exists")).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            json_message("Email already registered"),
+        )
+            .into_response();
     }
 
     if !email.contains('@') || !email.contains('.') {
-        return (StatusCode::BAD_REQUEST, json_error("Invalid email format")).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            json_message("Invalid email format"),
+        )
+            .into_response();
     }
 
     if password.len() < 8 {
         return (
             StatusCode::BAD_REQUEST,
-            json_error("Password must be at least 8 characters long"),
+            json_message("Password must be at least 8 characters long"),
         )
             .into_response();
     }
@@ -65,7 +72,7 @@ async fn sign_up(
     if name.len() < 3 {
         return (
             StatusCode::BAD_REQUEST,
-            json_error("Player name must be at least 3 characters long"),
+            json_message("Player name must be at least 3 characters long"),
         )
             .into_response();
     }
@@ -78,7 +85,7 @@ async fn sign_up(
 
     server.create_player(email, pw_hash, name);
 
-    (StatusCode::OK, json_success("Account created")).into_response()
+    (StatusCode::OK, json_message("Account created")).into_response()
 }
 
 // --- Sign In ---
@@ -89,13 +96,30 @@ async fn sign_in(
 ) -> impl IntoResponse {
     let player = match auth_session.authenticate(creds.clone()).await {
         Ok(Some(player)) => player,
-        Ok(None) => return StatusCode::UNAUTHORIZED.into_response(),
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        Ok(None) => {
+            return (
+                StatusCode::UNAUTHORIZED,
+                json_message("Incorrect email or password"),
+            )
+                .into_response();
+        }
+        Err(_) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_message("Internal server error"),
+            )
+                .into_response();
+        }
     };
 
     match auth_session.login(&player).await {
-        Ok(_) => Redirect::to("/dashboard").into_response(),
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        // Ok(_) => Redirect::to("/dashboard").into_response(),
+        Ok(_) => (StatusCode::OK, json_redirect("/dashboard")).into_response(),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json_message("Internal server error"),
+        )
+            .into_response(),
     }
 }
 

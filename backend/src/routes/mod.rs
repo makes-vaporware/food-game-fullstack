@@ -8,12 +8,12 @@ pub mod auth;
 pub mod gameplay;
 pub mod user;
 
-pub fn json_error(message: &str) -> Json<Value> {
-    Json(json!({"error": message}))
+pub fn json_message(message: &str) -> Json<Value> {
+    Json(json!({"message": message}))
 }
 
-pub fn json_success(message: &str) -> Json<Value> {
-    Json(json!({"success": message}))
+pub fn json_redirect(route: &str) -> Json<Value> {
+    Json(json!({"redirect_to": route}))
 }
 
 pub fn public() -> Router<Arc<Mutex<Server>>> {

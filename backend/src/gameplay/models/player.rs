@@ -1,5 +1,6 @@
-use crate::gameplay::data::{Inventory, Item, Recipe};
+use crate::gameplay::data::{CropType, Inventory, Item, Recipe};
 use crate::gameplay::functions::{craft, forage, sell};
+use crate::gameplay::models::Farm;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -18,7 +19,7 @@ pub struct Player {
     pub max_energy: u32,
     pub energy: u32,
     pub inventory: Inventory,
-    // pub farm: Farm,
+    pub farm: Farm,
 }
 
 impl Player {
@@ -36,6 +37,7 @@ impl Player {
             max_energy: 25,
             energy: 25,
             inventory: HashMap::new(),
+            farm: Farm::new(),
         }
     }
 
@@ -118,5 +120,26 @@ impl Player {
         self.gold += profit;
 
         Ok(format!("Sold {:?} for {} gold!", item, profit))
+    }
+
+    pub fn plant(
+        &mut self,
+        plot_id: u32,
+        crop_type: CropType,
+        current_tick: u32,
+    ) -> Result<String, String> {
+        self.farm.plant(plot_id as usize, crop_type, current_tick)
+    }
+
+    pub fn harvest(&mut self, plot_id: u32) -> Result<String, String> {
+        let item = self.farm.harvest(plot_id as usize)?;
+
+        *self.inventory.entry(item).or_insert(0) += 1;
+
+        Ok(format!("Harvested {:?}!", item))
+    }
+
+    pub fn update_farm(&mut self, current_tick: u32) {
+        self.farm.update_crops(current_tick);
     }
 }

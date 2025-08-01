@@ -1,5 +1,5 @@
 use crate::gameplay::{
-    data::{Item, Recipe},
+    data::{CropType, Item, Recipe},
     models::player::Player,
 };
 use serde::{Deserialize, Serialize};
@@ -23,6 +23,17 @@ impl Server {
             players: HashMap::new(),
             next_id: 1,
             ticks: 0,
+        }
+    }
+
+    pub fn advance(&mut self, ticks_elapsed: u32) {
+        self.ticks += ticks_elapsed;
+
+        // Restore 1 energy per tick for all players
+        // and update their farms
+        for (_, player) in &mut self.players {
+            player.restore_energy(ticks_elapsed);
+            player.update_farm(self.ticks);
         }
     }
 
@@ -89,5 +100,23 @@ impl Server {
         let player = self.get_mut_player_by_uuid(uuid)?;
 
         player.sell(item)
+    }
+
+    pub fn player_plant(
+        &mut self,
+        uuid: &str,
+        plot_id: u32,
+        crop_type: CropType,
+    ) -> Result<String, String> {
+        let current_tick = self.ticks;
+        let player = self.get_mut_player_by_uuid(uuid)?;
+
+        player.plant(plot_id, crop_type, current_tick)
+    }
+
+    pub fn player_harvest(&mut self, uuid: &str, plot_id: u32) -> Result<String, String> {
+        let player = self.get_mut_player_by_uuid(uuid)?;
+
+        player.harvest(plot_id)
     }
 }

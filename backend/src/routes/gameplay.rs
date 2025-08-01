@@ -1,7 +1,7 @@
 use crate::{
     auth::AuthSession,
     gameplay::{
-        data::{Item, Recipe},
+        data::{CropType, Item, Recipe},
         models::Server,
     },
 };
@@ -142,6 +142,97 @@ async fn sell(
     }
 }
 
+// --- Plant ---
+
+#[derive(Serialize, Deserialize)]
+pub struct PlantRequest {
+    pub plot_id: u32,
+    pub crop_type: CropType,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PlantResponse {
+    pub message: String,
+    pub success: bool,
+}
+
+async fn plant(
+    auth_session: AuthSession,
+    State(state): State<Arc<Mutex<Server>>>,
+    Json(plant_request): Json<PlantRequest>,
+) -> impl IntoResponse {
+    let user_uuid = match auth_session.user.as_ref() {
+        Some(user) => &user.uuid,
+        None => return StatusCode::UNAUTHORIZED.into_response(),
+    };
+
+    let mut server = state.lock().unwrap();
+
+    match server.player_plant(user_uuid, plant_request.plot_id, plant_request.crop_type) {
+        Ok(message) => (
+            StatusCode::OK,
+            Json(PlantResponse {
+                message,
+                success: true,
+            }),
+        )
+            .into_response(),
+        Err(message) => (
+            StatusCode::BAD_REQUEST,
+            Json(PlantResponse {
+                message,
+                success: false,
+            }),
+        )
+            .into_response(),
+    }
+}
+
+// --- Harvest ---
+
+#[derive(Serialize, Deserialize)]
+pub struct HarvestRequest {
+    pub plot_id: u32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct HarvestResponse {
+    pub message: String,
+    pub success: bool,
+}
+
+async fn harvest(
+    auth_session: AuthSession,
+    State(state): State<Arc<Mutex<Server>>>,
+    Json(harvest_request): Json<HarvestRequest>,
+) -> impl IntoResponse {
+    let user_uuid = match auth_session.user.as_ref() {
+        Some(user) => &user.uuid,
+        None => return StatusCode::UNAUTHORIZED.into_response(),
+    };
+
+    let mut server = state.lock().unwrap();
+
+    match server.player_harvest(user_uuid, harvest_request.plot_id) {
+        Ok(message) => (
+            StatusCode::OK,
+            Json(HarvestResponse {
+                message,
+                success: true,
+            }),
+        )
+            .into_response(),
+        Err(message) => (
+            StatusCode::BAD_REQUEST,
+            Json(HarvestResponse {
+                message,
+                success: false,
+            }),
+        )
+            .into_response(),
+    }
+}
+
 // =======================
 // === Exported Routes ===
 // =======================
@@ -155,4 +246,6 @@ pub fn protected_routes() -> Router<Arc<Mutex<Server>>> {
         .route("/forage", post(forage))
         .route("/craft", post(craft))
         .route("/sell", post(sell))
+        .route("/plant", post(plant))
+        .route("/harvest", post(harvest))
 }
